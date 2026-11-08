@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: saltpi/iFile
-          ref: 'develop'
+          ref: 'main'
           token: ${{ secrets.REPO_TOKEN }}
           submodules: recursive
 
@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           repository: saltpi/iFile
-          ref: 'develop'
+          ref: 'main'
           token: ${{ secrets.REPO_TOKEN }}
           submodules: recursive
 
