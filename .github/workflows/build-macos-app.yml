@@ -94,8 +94,8 @@ jobs:
         # Developer ID Application.
         uses: saltpi/import-codesign-certs@main
         with:
-          p12-file-base64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
-          p12-password: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
+          p12-zip-base64: ${{ secrets.P12_ZIP_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
 
       - name: 📄 Download Provisioning Profiles
         id: profiles
@@ -145,7 +145,7 @@ jobs:
           sdk: macosx
           action: archive
           archive-path: .build/Artifacts/iFile.xcarchive
-          export-options-plist: .meta/config/macos/export-options.plist
+          export-options-plist: .meta/config/macos/export.options.app-store.plist
           export-path: .build/Artifacts/app-store
           # run_attempt makes a re-run upload a new, higher build instead of
           # being rejected as a duplicate.
@@ -171,7 +171,7 @@ jobs:
           scheme: iFileMac
           action: export
           archive-path: ${{ steps.build.outputs.archive-path }}
-          export-options-plist: ExportOptions-DeveloperID.plist
+          export-options-plist: .meta/config/macos/export.options.developer-id.plist
           export-path: .build/Artifacts/developer-id
 
       - name: 💿 Create DMG

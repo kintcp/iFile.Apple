@@ -43,8 +43,8 @@ jobs:
         if: github.ref == 'refs/heads/prod'
         uses: saltpi/import-codesign-certs@main
         with:
-          p12-zip-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          p12-password: ${{ secrets.BUILD_CERTIFICATE_PASSWORD }}
+          p12-zip-base64: ${{ secrets.P12_ZIP_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
 
       - name: 📄 Download provisioning profiles
         if: github.ref == 'refs/heads/prod'
@@ -83,7 +83,7 @@ jobs:
           sdk: iphoneos
           action: archive
           archive-path: .build/Archives/iFile.xcarchive
-          export-options-plist: .meta/config/ios/export-options.plist
+          export-options-plist: .meta/config/ios/export.options.app-store.plist
           build-number: ${{ github.run_number }}
           zip-result-bundle: true
           zip-archive: true
