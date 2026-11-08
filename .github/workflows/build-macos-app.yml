@@ -122,9 +122,12 @@ jobs:
           PROFILES: ${{ steps.profiles.outputs.profiles }}
         run: |
           set -euo pipefail
-          for name in "AppStore cn.saltpi.app.iFile" "DeveloperID cn.saltpi.app.iFile"; do
-            if ! jq -e --arg name "$name" 'any(.[]; .name == $name)' <<<"$PROFILES" >/dev/null; then
-              echo "::error::No ACTIVE provisioning profile \"$name\"; see \"One-time Apple setup\" in README.md"
+          echo "Downloaded Provisioning Profiles:"
+          jq -r '.[] | "  - \(.name) (\(.type))"' <<<"$PROFILES"
+
+          for type in "MAC_APP_STORE" "MAC_APP_DIRECT"; do
+            if ! jq -e --arg type "$type" 'any(.[]; .type == $type)' <<<"$PROFILES" >/dev/null; then
+              echo "::error::No ACTIVE provisioning profile found for type \"$type\""
               exit 1
             fi
           done
