@@ -182,6 +182,11 @@ jobs:
           archive-path: ${{ steps.build.outputs.archive-path }}
           export-options-plist: .meta/config/macos/export.options.developer-id.plist
           export-path: .build/Artifacts/developer-id
+          extra-arguments: |
+            -allowProvisioningUpdates
+            -authenticationKeyPath "${{ steps.setup.outputs.auth-key-path }}"
+            -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}"
+            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}"
 
       - name: 💿 Create DMG
         id: dmg
@@ -207,16 +212,13 @@ jobs:
           if-no-files-found: error
 
       - name: 🎉 Create GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DMG: ${{ steps.dmg.outputs.dmg-path }}
-          VERSION: ${{ env.APP_VERSION }}
-        run: |
-          set -euo pipefail
-          gh release create "v${VERSION}-${GITHUB_RUN_NUMBER}" "$DMG" \
-            --target "$GITHUB_SHA" \
-            --title "iFile ${VERSION} (${GITHUB_RUN_NUMBER})" \
-            --generate-notes
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}-${{ github.run_number }}
+          name: iFile ${{ env.APP_VERSION }} (${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          files: ${{ steps.dmg.outputs.dmg-path }}
+          generate_release_notes: true
 
       - name: 📤 Upload Logs
         uses: actions/upload-artifact@v7
