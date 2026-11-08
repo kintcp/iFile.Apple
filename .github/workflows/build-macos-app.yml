@@ -183,7 +183,7 @@ jobs:
           team-id: ER9FN723RR
 
       - name: 🛡️ Notarize DMG
-        uses: Apple-Actions/notarize@v1
+        uses: saltpi/notarize@main
         with:
           path: ${{ steps.dmg.outputs.dmg-path }}
           issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
