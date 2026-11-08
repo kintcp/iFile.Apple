@@ -90,9 +90,9 @@ jobs:
           zip-result-bundle: true
           zip-archive: true
           extra-arguments: |
-            -allowProvisioningUpdates \
-            -authenticationKeyPath ".AuthKey.p8" \
-            -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}" \
+            -allowProvisioningUpdates
+            -authenticationKeyPath "$PWD/.AuthKey.p8"
+            -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}"
             -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}"
 
       - name: 📤 Upload Logs
