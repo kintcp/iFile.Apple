@@ -122,7 +122,7 @@ jobs:
           PROFILES: ${{ steps.profiles.outputs.profiles }}
         run: |
           set -euo pipefail
-          for name in "AppStore codes.orj.ExampleMac" "DeveloperID codes.orj.ExampleMac"; do
+          for name in "AppStore cn.saltpi.app.iFile" "DeveloperID cn.saltpi.app.iFile"; do
             if ! jq -e --arg name "$name" 'any(.[]; .name == $name)' <<<"$PROFILES" >/dev/null; then
               echo "::error::No ACTIVE provisioning profile \"$name\"; see \"One-time Apple setup\" in README.md"
               exit 1
@@ -160,8 +160,8 @@ jobs:
           app-type: macos
           # The default appstore-api backend only uploads .ipa files.
           backend: altool
-          issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
       - name: 🔏 Export Developer ID
@@ -176,18 +176,18 @@ jobs:
 
       - name: 💿 Create DMG
         id: dmg
-        uses: Apple-Actions/create-dmg@v1
+        uses: saltpi/create-dmg@main
         with:
           app-path: ${{ steps.devid.outputs.app-path }}
           dmg-path: .build/dmg/iFile-${{ steps.version.outputs.version }}-${{ github.run_number }}.dmg
-          team-id: ER9FN723RR
+          team-id: SNZWBGWPDW
 
       - name: 🛡️ Notarize DMG
         uses: saltpi/notarize@main
         with:
           path: ${{ steps.dmg.outputs.dmg-path }}
-          issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
       - name: 📤 Upload DMG
