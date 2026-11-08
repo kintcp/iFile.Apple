@@ -1,0 +1,101 @@
+name: build-ios-app
+
+run-name: Build for iOS
+
+on:
+  push:
+    branches:
+      - "**"
+
+concurrency:
+  group: ${{ github.ref }}-ios
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  build_ios:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: 🛠️ Checkout repository
+        uses: actions/checkout@v7
+        with:
+          repository: saltpi/iFile
+          ref: 'develop'
+          token: ${{ secrets.REPO_TOKEN }}
+          submodules: recursive
+
+      - name: ⚙️ Run XcodeGen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen
+
+      - name: 🔨 Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "~26.4.0"
+
+      - name: 🔑 Import code sign
+        if: github.ref == 'refs/heads/prod'
+        uses: saltpi/import-codesign-certs@main
+        with:
+          p12-zip-base64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.BUILD_CERTIFICATE_PASSWORD }}
+
+      - name: 📄 Download provisioning profiles
+        if: github.ref == 'refs/heads/prod'
+        uses: saltpi/download-provisioning-profiles@main
+        with:
+          bundle-id: "cn.saltpi.app.iFile"
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
+      - name: 🏗️ Build
+        if: github.ref != 'refs/heads/prod'
+        uses: saltpi/xcodebuild@main
+        with:
+          project: iFile.xcodeproj
+          scheme: iFile
+          sdk: iphonesimulator
+          build-number: ${{ github.run_number }}
+          zip-result-bundle: true
+
+      - name: 📦 Build Signed
+        if: github.ref == 'refs/heads/prod'
+        uses: saltpi/xcodebuild@main
+        with:
+          project: iFile.xcodeproj
+          scheme: iFile
+          sdk: iphoneos
+          action: archive
+          archive-path: .build/Archives/iFile.xcarchive
+          export-options-plist: .meta/config/ios/export-options.plist
+          build-number: ${{ github.run_number }}
+          zip-result-bundle: true
+          zip-archive: true
+
+      - name: 📤 Upload Logs
+        uses: actions/upload-artifact@v7
+        if: ${{ failure() || cancelled() }}
+        with:
+          name: logs
+          include-hidden-files: true
+          path: .build/*.log
+          if-no-files-found: error
+
+      - name: 🚀 Upload TestFlight Build
+        if: github.ref == 'refs/heads/prod'
+        uses: saltpi/upload-testflight-build@main
+        env:
+          CURRENT_PROJECT_VERSION: ${{ github.run_number }}
+          PRODUCT_BUNDLE_IDENTIFIER: "cn.saltpi.app.iFile"
+        with:
+          app-path: ".build/Artifacts/iFile.ipa/iFile.ipa"
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
