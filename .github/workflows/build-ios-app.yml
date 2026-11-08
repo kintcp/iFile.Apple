@@ -34,7 +34,7 @@ jobs:
           fi
           xcodegen
           # write AuthKey.p8 for App Store Connect API Key authentication
-          echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" | base64 --decode > .meta/config/AuthKey.p8
+          echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > .meta/config/AuthKey.p8
 
       - name: 🔨 Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
