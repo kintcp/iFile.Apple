@@ -55,6 +55,15 @@ jobs:
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
+      - name: 📄 Download provisioning profiles
+        if: github.ref == 'refs/heads/prod'
+        uses: saltpi/download-provisioning-profiles@main
+        with:
+          bundle-id: "cn.saltpi.app.iFile.FileProvider"
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
       - name: 🏗️ Build
         if: github.ref != 'refs/heads/prod'
         uses: saltpi/xcodebuild@main
