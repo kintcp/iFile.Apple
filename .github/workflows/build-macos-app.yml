@@ -105,40 +105,40 @@ jobs:
           p12-zip-base64: ${{ secrets.P12_ZIP_BASE64 }}
           p12-password: ${{ secrets.P12_PASSWORD }}
 
-      - name: 📄 Download Provisioning Profiles
-        id: profiles
-        # No profile-type: fetches both the AppStore (TestFlight) and
-        # DeveloperID (DMG) profiles for the bundle.
-        uses: saltpi/download-provisioning-profiles@main
-        with:
-          bundle-id: "cn.saltpi.app.iFile"
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+      # - name: 📄 Download Provisioning Profiles
+      #   id: profiles
+      #   # No profile-type: fetches both the AppStore (TestFlight) and
+      #   # DeveloperID (DMG) profiles for the bundle.
+      #   uses: saltpi/download-provisioning-profiles@main
+      #   with:
+      #     bundle-id: "cn.saltpi.app.iFile"
+      #     issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+      #     api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+      #     api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
-      - name: 📄 Download provisioning profiles
-        if: github.ref == 'refs/heads/prod'
-        uses: saltpi/download-provisioning-profiles@main
-        with:
-          bundle-id: "cn.saltpi.app.iFile.FileProvider"
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+      # - name: 📄 Download provisioning profiles
+      #   if: github.ref == 'refs/heads/prod'
+      #   uses: saltpi/download-provisioning-profiles@main
+      #   with:
+      #     bundle-id: "cn.saltpi.app.iFile.FileProvider"
+      #     issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+      #     api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+      #     api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
-      - name: 🔍 Check Provisioning Profiles
-        env:
-          PROFILES: ${{ steps.profiles.outputs.profiles }}
-        run: |
-          set -euo pipefail
-          echo "Downloaded Provisioning Profiles:"
-          jq -r '.[] | "  - \(.name) (\(.type))"' <<<"$PROFILES"
+      # - name: 🔍 Check Provisioning Profiles
+      #   env:
+      #     PROFILES: ${{ steps.profiles.outputs.profiles }}
+      #   run: |
+      #     set -euo pipefail
+      #     echo "Downloaded Provisioning Profiles:"
+      #     jq -r '.[] | "  - \(.name) (\(.type))"' <<<"$PROFILES"
 
-          for type in "MAC_APP_STORE" "MAC_APP_DIRECT"; do
-            if ! jq -e --arg type "$type" 'any(.[]; .type == $type)' <<<"$PROFILES" >/dev/null; then
-              echo "::error::No ACTIVE provisioning profile found for type \"$type\""
-              exit 1
-            fi
-          done
+      #     for type in "MAC_APP_STORE" "MAC_APP_DIRECT"; do
+      #       if ! jq -e --arg type "$type" 'any(.[]; .type == $type)' <<<"$PROFILES" >/dev/null; then
+      #         echo "::error::No ACTIVE provisioning profile found for type \"$type\""
+      #         exit 1
+      #       fi
+      #     done
 
       - name: 📦 Archive and Export for App Store
         id: build
