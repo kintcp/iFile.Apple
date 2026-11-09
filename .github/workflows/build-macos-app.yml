@@ -68,6 +68,8 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: write
+    env:
+      APP_VERSION: "1.0.0"
     steps:
       - name: 🛠️ Checkout Code
         uses: actions/checkout@v7
@@ -78,11 +80,17 @@ jobs:
           submodules: recursive
 
       - name: ⚙️ Run XcodeGen
+        id: setup
         run: |
           if ! command -v xcodegen >/dev/null 2>&1; then
             brew install xcodegen
           fi
           xcodegen
+          # write AuthKey.p8 for App Store Connect API Key authentication
+          echo "${{ secrets.APPSTORE_API_PRIVATE_KEY }}" > .meta/config/AuthKey.p8
+          # write AuthKey.p8 absolute path for xcodebuild to use
+          echo "auth-key-path=$PWD/.meta/config/AuthKey.p8" >> "$GITHUB_OUTPUT"
+          echo "AUTH_KEY_PATH=$PWD/.meta/config/AuthKey.p8" >> "$GITHUB_ENV"
 
       - name: 🔨 Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
@@ -94,38 +102,43 @@ jobs:
         # Developer ID Application.
         uses: saltpi/import-codesign-certs@main
         with:
-          p12-file-base64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
-          p12-password: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
+          p12-zip-base64: ${{ secrets.P12_ZIP_BASE64 }}
+          p12-password: ${{ secrets.P12_PASSWORD }}
 
-      - name: 📄 Download Provisioning Profiles
-        id: profiles
-        # No profile-type: fetches both the AppStore (TestFlight) and
-        # DeveloperID (DMG) profiles for the bundle.
-        uses: saltpi/download-provisioning-profiles@main
-        with:
-          bundle-id: cn.saltpi.app.iFile
-          issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+      # - name: 📄 Download Provisioning Profiles
+      #   id: profiles
+      #   # No profile-type: fetches both the AppStore (TestFlight) and
+      #   # DeveloperID (DMG) profiles for the bundle.
+      #   uses: saltpi/download-provisioning-profiles@main
+      #   with:
+      #     bundle-id: "cn.saltpi.app.iFile"
+      #     issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+      #     api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+      #     api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
-      - name: 🔍 Check Provisioning Profiles
-        env:
-          PROFILES: ${{ steps.profiles.outputs.profiles }}
-        run: |
-          set -euo pipefail
-          for name in "AppStore codes.orj.ExampleMac" "DeveloperID codes.orj.ExampleMac"; do
-            if ! jq -e --arg name "$name" 'any(.[]; .name == $name)' <<<"$PROFILES" >/dev/null; then
-              echo "::error::No ACTIVE provisioning profile \"$name\"; see \"One-time Apple setup\" in README.md"
-              exit 1
-            fi
-          done
+      # - name: 📄 Download provisioning profiles
+      #   if: github.ref == 'refs/heads/prod'
+      #   uses: saltpi/download-provisioning-profiles@main
+      #   with:
+      #     bundle-id: "cn.saltpi.app.iFile.FileProvider"
+      #     issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+      #     api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+      #     api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
-      - name: 🏷️ Read Version
-        id: version
-        run: |
-          set -euo pipefail
-          version=$(awk -F= '/^MARKETING_VERSION/{gsub(/[ \t]/,"",$2); print $2}' Config/Shared.xcconfig)
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+      # - name: 🔍 Check Provisioning Profiles
+      #   env:
+      #     PROFILES: ${{ steps.profiles.outputs.profiles }}
+      #   run: |
+      #     set -euo pipefail
+      #     echo "Downloaded Provisioning Profiles:"
+      #     jq -r '.[] | "  - \(.name) (\(.type))"' <<<"$PROFILES"
+
+      #     for type in "MAC_APP_STORE" "MAC_APP_DIRECT"; do
+      #       if ! jq -e --arg type "$type" 'any(.[]; .type == $type)' <<<"$PROFILES" >/dev/null; then
+      #         echo "::error::No ACTIVE provisioning profile found for type \"$type\""
+      #         exit 1
+      #       fi
+      #     done
 
       - name: 📦 Archive and Export for App Store
         id: build
@@ -136,11 +149,16 @@ jobs:
           sdk: macosx
           action: archive
           archive-path: .build/Artifacts/iFile.xcarchive
-          export-options-plist: .meta/config/macos/export-options.plist
+          export-options-plist: .meta/config/macos/export.options.app-store.plist
           export-path: .build/Artifacts/app-store
           # run_attempt makes a re-run upload a new, higher build instead of
           # being rejected as a duplicate.
           build-number: ${{ github.run_number }}.${{ github.run_attempt }}
+          extra-arguments: |
+            -allowProvisioningUpdates
+            -authenticationKeyPath "${{ steps.setup.outputs.auth-key-path }}"
+            -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}"
+            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}"
 
       # TestFlight runs before the DMG so a notary-service outage can't block
       # it. To never upload twice instead, move this step after Notarize DMG.
@@ -151,8 +169,8 @@ jobs:
           app-type: macos
           # The default appstore-api backend only uploads .ipa files.
           backend: altool
-          issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
       - name: 🔏 Export Developer ID
@@ -162,23 +180,28 @@ jobs:
           scheme: iFileMac
           action: export
           archive-path: ${{ steps.build.outputs.archive-path }}
-          export-options-plist: ExportOptions-DeveloperID.plist
+          export-options-plist: .meta/config/macos/export.options.developer-id.plist
           export-path: .build/Artifacts/developer-id
+          extra-arguments: |
+            -allowProvisioningUpdates
+            -authenticationKeyPath "${{ steps.setup.outputs.auth-key-path }}"
+            -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}"
+            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}"
 
       - name: 💿 Create DMG
         id: dmg
-        uses: Apple-Actions/create-dmg@v1
+        uses: saltpi/create-dmg@main
         with:
           app-path: ${{ steps.devid.outputs.app-path }}
-          dmg-path: .build/dmg/iFile-${{ steps.version.outputs.version }}-${{ github.run_number }}.dmg
-          team-id: ER9FN723RR
+          dmg-path: .build/dmg/iFile-${{ env.APP_VERSION }}-${{ github.run_number }}.dmg
+          team-id: SNZWBGWPDW
 
       - name: 🛡️ Notarize DMG
-        uses: Apple-Actions/notarize@v1
+        uses: saltpi/notarize@main
         with:
           path: ${{ steps.dmg.outputs.dmg-path }}
-          issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
       - name: 📤 Upload DMG
@@ -189,16 +212,14 @@ jobs:
           if-no-files-found: error
 
       - name: 🎉 Create GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          DMG: ${{ steps.dmg.outputs.dmg-path }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          set -euo pipefail
-          gh release create "v${VERSION}-${GITHUB_RUN_NUMBER}" "$DMG" \
-            --target "$GITHUB_SHA" \
-            --title "iFile ${VERSION} (${GITHUB_RUN_NUMBER})" \
-            --generate-notes
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.APP_VERSION }}-${{ github.run_number }}
+          name: iFile ${{ env.APP_VERSION }} (${{ github.run_number }})
+          target_commitish: ${{ github.sha }}
+          files: ${{ steps.dmg.outputs.dmg-path }}
+          generate_release_notes: true
+          make_latest: true
 
       - name: 📤 Upload Logs
         uses: actions/upload-artifact@v7
