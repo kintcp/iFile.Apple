@@ -173,7 +173,7 @@ jobs:
         uses: saltpi/create-dmg@main
         with:
           app-path: ${{ steps.devid.outputs.app-path }}
-          dmg-path: .build/dmg/iFile-${{ env.APP_VERSION }}-${{ github.run_number }}.dmg
+          dmg-path: .build/dmg/iFile.dmg
           team-id: SNZWBGWPDW
 
       - name: 🛡️ Notarize DMG
