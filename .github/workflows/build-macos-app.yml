@@ -105,6 +105,26 @@ jobs:
           p12-zip-base64: ${{ secrets.P12_ZIP_BASE64 }}
           p12-password: ${{ secrets.P12_PASSWORD }}
 
+      - name: 📄 Download Provisioning Profiles
+        id: profiles
+        # No profile-type: fetches both the AppStore (TestFlight) and
+        # DeveloperID (DMG) profiles for the bundle.
+        uses: saltpi/download-provisioning-profiles@main
+        with:
+          bundle-id: "cn.saltpi.app.iFile"
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
+      - name: 📄 Download provisioning profiles
+        if: github.ref == 'refs/heads/prod'
+        uses: saltpi/download-provisioning-profiles@main
+        with:
+          bundle-id: "cn.saltpi.app.iFile.FileProvider"
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}         
+
       - name: 📦 Archive and Export for App Store
         id: build
         uses: saltpi/xcodebuild@main
@@ -146,10 +166,6 @@ jobs:
           archive-path: ${{ steps.build.outputs.archive-path }}
           export-options-plist: .meta/config/macos/export.options.developer-id.plist
           export-path: .build/Artifacts/developer-id
-          authentication-key-path: ${{ steps.setup.outputs.auth-key-path }}
-          authentication-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
-          authentication-key-issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          allow-provisioning-updates: true
 
       - name: 💿 Create DMG
         id: dmg
