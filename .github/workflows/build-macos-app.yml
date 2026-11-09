@@ -146,11 +146,10 @@ jobs:
           archive-path: ${{ steps.build.outputs.archive-path }}
           export-options-plist: .meta/config/macos/export.options.developer-id.plist
           export-path: .build/Artifacts/developer-id
-          extra-arguments: |
-            -allowProvisioningUpdates
-            -authenticationKeyPath "${{ steps.setup.outputs.auth-key-path }}"
-            -authenticationKeyID "${{ secrets.APPSTORE_API_KEY_ID }}"
-            -authenticationKeyIssuerID "${{ secrets.APPSTORE_ISSUER_ID }}"
+          authentication-key-path: ${{ steps.setup.outputs.auth-key-path }}
+          authentication-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+          authentication-key-issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          allow-provisioning-updates: true
 
       - name: 💿 Create DMG
         id: dmg
