@@ -136,7 +136,7 @@ jobs:
           archive-path: .build/Artifacts/iFile.xcarchive
           export-options-plist: .meta/config/macos/export.options.app-store.plist
           export-path: .build/Artifacts/app-store
-          disableAutomaticPackageResolution: false
+          disable-automatic-package-resolution: false
           # run_attempt makes a re-run upload a new, higher build instead of
           # being rejected as a duplicate.
           build-number: ${{ github.run_number }}.${{ github.run_attempt }}
