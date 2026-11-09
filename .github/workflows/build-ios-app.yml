@@ -74,6 +74,7 @@ jobs:
           archive-path: .build/Archives/iFile.xcarchive
           export-options-plist: .meta/config/ios/export.options.app-store.plist
           build-number: ${{ github.run_number }}
+          disableAutomaticPackageResolution: false
           zip-result-bundle: true
           zip-archive: true
           authentication-key-path: ${{ steps.setup.outputs.auth-key-path }}
